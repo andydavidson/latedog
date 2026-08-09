@@ -24,7 +24,7 @@ export class MenuScene extends Phaser.Scene {
     }
 
     // Studio credit — top
-    this.add.text(CANVAS_W / 2, 36, 'A CHARLIE STUDIOS GAME', {
+    this.add.text(CANVAS_W / 2, 36, 'AN ELECTRO-MAGNETIC STUDIOS GAME', {
       fontSize: '14px',
       fontStyle: 'bold',
       color: '#ffaa00',
@@ -117,7 +117,7 @@ export class MenuScene extends Phaser.Scene {
     this.input.on('pointerdown', () => this.startGame());
 
     // Footer credit
-    this.add.text(CANVAS_W / 2, CANVAS_H - 14, '\u00A9 Charlie Studios', {
+    this.add.text(CANVAS_W / 2, CANVAS_H - 14, '\u00A9 Electro-Magnetic Studios', {
       fontSize: '12px',
       color: '#555577',
     }).setOrigin(0.5);
