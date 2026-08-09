@@ -126,8 +126,10 @@ export function generateLevel(levelNumber: number): LevelDefinition {
     )
   );
 
-  // Wall density rises with level: 10% at level 5, +4% per level, capped at 50%.
-  const density = Math.min(0.50, 0.10 + (levelNumber - 5) * 0.04);
+  // Wall density rises with level.
+  // Level 4 (hand-crafted) is roughly 23% interior walls; level 5 starts just
+  // above that so there is no backward step in complexity.
+  const density = Math.min(0.52, 0.27 + (levelNumber - 5) * 0.03);
 
   // Build candidate list: interior tiles that aren't protected or task positions.
   const taskKeys = new Set(taskPositions.map(posKey));
