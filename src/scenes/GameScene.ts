@@ -218,7 +218,7 @@ export class GameScene extends Phaser.Scene {
 
   private createPlayer() {
     const { x, y } = tileToPixel(this.playerCol, this.playerRow);
-    this.playerSprite = this.add.text(x, y, '\u{1F9D2}', { fontSize: '30px' })
+    this.playerSprite = this.add.text(x, y, '\u{1F466}', { fontSize: '30px' })
       .setOrigin(0.5).setDepth(10);
   }
 
