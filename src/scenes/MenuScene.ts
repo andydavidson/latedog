@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { primeAudio } from '../audio/bark';
 
 const CANVAS_W = 800;
 const CANVAS_H = 670;
@@ -134,6 +135,7 @@ export class MenuScene extends Phaser.Scene {
   }
 
   private startGame() {
+    primeAudio(); // warm up AudioContext inside this user-gesture call
     this.scene.start('GameScene', { levelNumber: 1 });
   }
 }

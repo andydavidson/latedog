@@ -120,6 +120,13 @@ function singleBark(ctx: AudioContext, t: number, pitchMult: number) {
   noiseSrc.start(t); noiseSrc.stop(end);
 }
 
+// Call this directly inside a user-gesture handler (button click / tap).
+// Safari requires the AudioContext to be created AND resumed within a gesture;
+// lazy creation on the first bark (a timer event) won't satisfy it.
+export function primeAudio(): void {
+  getRunningCtx().catch(err => console.warn('[bark] prime failed:', err));
+}
+
 export function playBark(count: number = 1): void {
   getRunningCtx()
     .then(ctx => {

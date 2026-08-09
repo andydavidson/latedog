@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import type { LevelDefinition, GameState, GridPos, TaskDefinition } from '../types';
 import { ALL_LEVELS } from '../levels/index';
 import { generateLevel, MAX_LEVEL } from '../maze/generator';
-import { playBark } from '../audio/bark';
+import { playBark, primeAudio } from '../audio/bark';
 
 const TILE = 40;
 const HEADER_H = 70;
@@ -388,6 +388,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   private handleOverlayButton() {
+    primeAudio(); // keep AudioContext alive across scene restarts in Safari
     if (this.gameState === 'won') {
       const nextLevel = this.levelNumber + 1;
       if (nextLevel <= MAX_LEVEL) {
