@@ -316,6 +316,10 @@ export class GameScene extends Phaser.Scene {
   // ─── D-pad ───────────────────────────────────────────────────────────────
 
   private createDpad() {
+    // Hide D-pad on pointer-only devices (desktop/laptop).
+    // maxTouchPoints === 0 means no touch hardware at all.
+    if (navigator.maxTouchPoints === 0) return;
+
     const btnSize = 62;
     const gap = 4;
     const cx = COLS * TILE - btnSize * 1.5 - gap * 2 - 6;
