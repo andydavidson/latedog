@@ -22,6 +22,14 @@ export class MenuScene extends Phaser.Scene {
       lineGfx.lineBetween(x, 80, x, CANVAS_H);
     }
 
+    // Studio credit — top
+    this.add.text(CANVAS_W / 2, 36, 'A CHARLIE STUDIOS GAME', {
+      fontSize: '14px',
+      fontStyle: 'bold',
+      color: '#ffaa00',
+      letterSpacing: 6,
+    }).setOrigin(0.5);
+
     // Title
     this.add.text(CANVAS_W / 2, 120, 'THE', {
       fontSize: '36px',
@@ -104,8 +112,14 @@ export class MenuScene extends Phaser.Scene {
     btnBg.on('pointerout',   () => btnBg.setFillStyle(0xff6600));
     btnBg.on('pointerdown',  () => this.startGame());
 
-    // Also allow clicking anywhere
+    // Also allow clicking anywhere (but not if the begin button swallows it first)
     this.input.on('pointerdown', () => this.startGame());
+
+    // Footer credit
+    this.add.text(CANVAS_W / 2, CANVAS_H - 14, '\u00A9 Charlie Studios', {
+      fontSize: '12px',
+      color: '#555577',
+    }).setOrigin(0.5);
 
     // Pulse the button
     this.tweens.add({

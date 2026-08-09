@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import type { LevelDefinition, GameState, GridPos, TaskDefinition } from '../types';
 import { ALL_LEVELS } from '../levels/index';
+import { generateLevel, MAX_LEVEL } from '../maze/generator';
 import { playBark } from '../audio/bark';
 
 const TILE = 40;
@@ -107,7 +108,9 @@ export class GameScene extends Phaser.Scene {
   }
 
   create() {
-    this.level = ALL_LEVELS[this.levelNumber - 1] ?? ALL_LEVELS[0];
+    this.level = this.levelNumber <= ALL_LEVELS.length
+      ? (ALL_LEVELS[this.levelNumber - 1] ?? ALL_LEVELS[0])
+      : generateLevel(this.levelNumber);
     this.gameState = 'playing';
     this.completedTasks = new Set();
     this.timeRemaining = this.level.startingTimeSeconds;
@@ -383,13 +386,12 @@ export class GameScene extends Phaser.Scene {
   private handleOverlayButton() {
     if (this.gameState === 'won') {
       const nextLevel = this.levelNumber + 1;
-      if (nextLevel <= ALL_LEVELS.length) {
+      if (nextLevel <= MAX_LEVEL) {
         this.scene.start('GameScene', { levelNumber: nextLevel });
       } else {
         this.scene.start('MenuScene');
       }
     } else {
-      // lost — retry same level
       this.scene.start('GameScene', { levelNumber: this.levelNumber });
     }
   }
@@ -598,13 +600,13 @@ export class GameScene extends Phaser.Scene {
       targets: this.dogSprite, scaleX: 1.6, scaleY: 0.6, duration: 200, yoyo: true,
     });
 
-    const isLastLevel = this.levelNumber >= ALL_LEVELS.length;
+    const isLastLevel = this.levelNumber >= MAX_LEVEL;
     const btnLabel = isLastLevel ? 'BACK TO MENU' : 'NEXT LEVEL \u25BA';
     const title = isLastLevel
-      ? '\u{1F3C6} ALL DONE!'
+      ? '\u{1F3C6} YOU BEAT THE GAME!'
       : `\u{1F3EB} LEVEL ${this.levelNumber} COMPLETE!`;
     const subtitle = isLastLevel
-      ? 'You finished every level!\nYou are a morning champion!'
+      ? 'You finished all 13 levels!\nYou are an absolute morning champion!\nThe Late Dog never stood a chance!'
       : `Amazing! You made it to school!\nReady for Level ${this.levelNumber + 1}?`;
 
     this.time.delayedCall(500, () => this.showOverlay(title, subtitle, btnLabel));
