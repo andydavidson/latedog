@@ -1,49 +1,52 @@
-// Dog bark synthesizer using Web Audio API.
+// Dog bark synthesizer — Web Audio API
 //
-// A real bark has three layers:
-//   1. Tonal body  — sawtooth oscillator with a fast frequency sweep ("WOOF" vowel)
-//   2. Chest thump — sine sub-oscillator for low-frequency weight
-//   3. Noise burst  — white noise through formant-shaped bandpass filters
-//                     to create the rough, airy texture of the initial attack
+// Three layered components:
+//   1. Tonal body   — sawtooth oscillator with fast pitch sweep ("WOOF" shape)
+//   2. Chest thump  — sub-sine for low-frequency physical weight
+//   3. Noise burst  — white noise through formant bandpass filters for texture
 //
-// The noise buffer is generated once and reused (BufferSource nodes are
-// single-use but the underlying AudioBuffer can be shared across them).
+// AudioContext resume() is async; playBark awaits it before scheduling so
+// audio is never silently dropped when the context is suspended.
 
 let _ctx: AudioContext | null = null;
 let _noiseBuffer: AudioBuffer | null = null;
 
-function getCtx(): AudioContext {
-  if (!_ctx) _ctx = new AudioContext();
-  if (_ctx.state === 'suspended') void _ctx.resume();
+// Returns a running AudioContext, properly awaiting resume if suspended.
+async function getRunningCtx(): Promise<AudioContext> {
+  if (!_ctx) {
+    const Ctx =
+      window.AudioContext ??
+      (window as unknown as { webkitAudioContext: typeof AudioContext })
+        .webkitAudioContext;
+    _ctx = new Ctx();
+  }
+  if (_ctx.state === 'suspended') await _ctx.resume();
   return _ctx;
 }
 
 function getNoiseBuffer(ctx: AudioContext): AudioBuffer {
   if (_noiseBuffer) return _noiseBuffer;
   const length = Math.ceil(ctx.sampleRate * 0.6);
-  const buf = ctx.createBuffer(1, length, ctx.sampleRate);
-  const data = buf.getChannelData(0);
+  const buf    = ctx.createBuffer(1, length, ctx.sampleRate);
+  const data   = buf.getChannelData(0);
   for (let i = 0; i < length; i++) data[i] = Math.random() * 2 - 1;
   _noiseBuffer = buf;
   return buf;
 }
 
 function singleBark(ctx: AudioContext, t: number, pitchMult: number) {
-  const base = 230 * pitchMult; // fundamental, ~230 Hz for a medium dog
+  const base = 230 * pitchMult; // ~230 Hz fundamental for a medium dog
 
   // ── 1. Tonal body ────────────────────────────────────────────────────────
-  // Sawtooth rich in harmonics, sweeps downward like a real "WOOF".
   const bodyOsc    = ctx.createOscillator();
   const bodyFilter = ctx.createBiquadFilter();
   const bodyGain   = ctx.createGain();
 
   bodyOsc.type = 'sawtooth';
-  // Starts ~2.5x pitch (bright attack), drops to base, then falls further
   bodyOsc.frequency.setValueAtTime(base * 2.5, t);
   bodyOsc.frequency.exponentialRampToValueAtTime(base,        t + 0.035);
   bodyOsc.frequency.exponentialRampToValueAtTime(base * 0.65, t + 0.20);
 
-  // Resonant low-pass shaped to emphasise the 300–600 Hz "oo" vowel region
   bodyFilter.type = 'lowpass';
   bodyFilter.frequency.setValueAtTime(1400, t);
   bodyFilter.frequency.exponentialRampToValueAtTime(360, t + 0.20);
@@ -57,7 +60,6 @@ function singleBark(ctx: AudioContext, t: number, pitchMult: number) {
   bodyFilter.connect(bodyGain);
 
   // ── 2. Sub / chest thump ─────────────────────────────────────────────────
-  // Pure sine an octave below for the physical weight of the bark.
   const subOsc  = ctx.createOscillator();
   const subGain = ctx.createGain();
 
@@ -71,18 +73,16 @@ function singleBark(ctx: AudioContext, t: number, pitchMult: number) {
 
   subOsc.connect(subGain);
 
-  // ── 3. Noise burst (breath / roughness) ──────────────────────────────────
-  // Two bandpass filters at the first two formant frequencies of "oo"
-  // give the noise a dog-like timbral quality rather than pure hiss.
+  // ── 3. Noise burst ───────────────────────────────────────────────────────
   const noiseSrc = ctx.createBufferSource();
   noiseSrc.buffer = getNoiseBuffer(ctx);
 
-  const f1 = ctx.createBiquadFilter(); // first formant  ~320 Hz
+  const f1 = ctx.createBiquadFilter();
   f1.type = 'bandpass';
   f1.frequency.value = 320 * pitchMult;
   f1.Q.value = 3.5;
 
-  const f2 = ctx.createBiquadFilter(); // second formant ~860 Hz
+  const f2 = ctx.createBiquadFilter();
   f2.type = 'bandpass';
   f2.frequency.value = 860 * pitchMult;
   f2.Q.value = 2.5;
@@ -90,7 +90,6 @@ function singleBark(ctx: AudioContext, t: number, pitchMult: number) {
   const noiseGain = ctx.createGain();
   noiseGain.gain.setValueAtTime(0,    t);
   noiseGain.gain.linearRampToValueAtTime(0.45, t + 0.004);
-  // Short attack, decays before the tonal tail so the roughness leads
   noiseGain.gain.exponentialRampToValueAtTime(0.001, t + 0.11);
 
   noiseSrc.connect(f1);
@@ -98,8 +97,7 @@ function singleBark(ctx: AudioContext, t: number, pitchMult: number) {
   f1.connect(noiseGain);
   f2.connect(noiseGain);
 
-  // ── Master mix ───────────────────────────────────────────────────────────
-  // A compressor prevents clipping when multiple barks overlap.
+  // ── Master mix with compressor ───────────────────────────────────────────
   const comp = ctx.createDynamicsCompressor();
   comp.threshold.value = -12;
   comp.knee.value      = 6;
@@ -116,22 +114,28 @@ function singleBark(ctx: AudioContext, t: number, pitchMult: number) {
   comp.connect(master);
   master.connect(ctx.destination);
 
-  const end = t + 0.28;
-  bodyOsc.start(t);   bodyOsc.stop(end);
-  subOsc.start(t);    subOsc.stop(end);
-  noiseSrc.start(t);  noiseSrc.stop(end);
+  const end = t + 0.30;
+  bodyOsc.start(t);  bodyOsc.stop(end);
+  subOsc.start(t);   subOsc.stop(end);
+  noiseSrc.start(t); noiseSrc.stop(end);
 }
 
 export function playBark(count: number = 1): void {
-  try {
-    const ctx = getCtx();
-    const t = ctx.currentTime;
-    for (let i = 0; i < count; i++) {
-      // Slight random pitch variation each bark — dogs aren't monotone
-      const pitchMult = 0.88 + Math.random() * 0.28;
-      singleBark(ctx, t + i * 0.30, pitchMult);
-    }
-  } catch (_) {
-    // Audio unavailable — silently ignore
-  }
+  getRunningCtx()
+    .then(ctx => {
+      // Schedule 60 ms in the future to guarantee we're not in the past
+      // regardless of how long getRunningCtx took to resolve.
+      const t = ctx.currentTime + 0.06;
+      for (let i = 0; i < count; i++) {
+        try {
+          const pitchMult = 0.88 + Math.random() * 0.28;
+          singleBark(ctx, t + i * 0.30, pitchMult);
+        } catch (err) {
+          console.warn('[bark] singleBark failed:', err);
+        }
+      }
+    })
+    .catch(err => {
+      console.warn('[bark] AudioContext error:', err);
+    });
 }
